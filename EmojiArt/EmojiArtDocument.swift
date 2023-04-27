@@ -39,11 +39,12 @@ class EmojiArtDocument: ObservableObject{
     }
     
     func moveEmoji(_ emoji: EmojiArtModel.Emoji, by offset: CGSize) {
-        if let index = emojiArt.emojis.index(matching: emoji) {
+        if let index = emojiArt.emojis.firstIndex(of: emoji) {
             emojiArt.emojis[index].x += Int(offset.width)
             emojiArt.emojis[index].y += Int(offset.height)
         }
     }
+    
     
     enum BackgroundImageFetchStatus{
         case idle
@@ -80,4 +81,8 @@ class EmojiArtDocument: ObservableObject{
         }
     }
     
+}
+extension EmojiArtModel.Emoji {
+    var fontSize: CGFloat { CGFloat(self.size) }
+    var location: CGPoint { CGPoint(x: CGFloat(x), y: CGFloat(y)) }
 }

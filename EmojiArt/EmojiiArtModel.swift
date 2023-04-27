@@ -17,6 +17,7 @@ struct EmojiArtModel{
         var y: Int
         var size: Int
         let id: Int
+       
         
         init(text: String, x: Int, y: Int, size: Int, id: Int) {
             self.text = text

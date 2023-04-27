@@ -9,13 +9,21 @@ import SwiftUI
 
 struct EmojiArtDocumentView: View {
     @ObservedObject var document: EmojiArtDocument
+    @State private var selectedEmojis: Set<EmojiArtModel.Emoji> = []
+    @State private var offsetValue = CGSize.zero
+   
     let defaultEmojiFontSize: CGFloat = 40
+    
     var body: some View {
         VStack(spacing: 0){
             documentBody
             pallet
         }
+        .onTapGesture {
+            selectedEmojis.removeAll()
+        }
     }
+
     
     var documentBody: some View{
         GeometryReader {geometry in
@@ -30,38 +38,110 @@ struct EmojiArtDocumentView: View {
                     ProgressView()
                 }else{
                     ForEach(document.emojis){emoji in
-                        Text(emoji.text)
-                            .font(.system(size: fontSize(for: emoji)))
-                            .scaleEffect(zoomScale)
-                            .position(position(for: emoji, in: geometry))
+                        ZStack {
+                            Text(emoji.text)
+                                .font(.system(size: emoji.fontSize))
+                                .foregroundColor(selectedEmojis.contains(emoji) ? .white : .black)
+                                .scaleEffect(selectedEmojis.contains(emoji) ? 1.5 : 1.0)
+                                .opacity(selectedEmojis.contains(emoji) ? 0.5 : 1.0)
+                                .position(position(for: emoji, in: geometry))
+                                .offset(offsetValue)
+                                .gesture(selectedEmojis.contains(emoji) ? self.panEmojiGesture(emoji: emoji) : nil)
+                        }
+                        .onTapGesture {
+                            tapToSelect(emoji: emoji)
+                        }
+                        .animation(.spring(), value: selectedEmojis)
                     }
+
                 }
             }
             .clipped()
             .onDrop(of: [.plainText, .url, .image], isTargeted: nil) { providers, location in
-                return drop(providers: providers, at: location, in: geometry)
+                    return drop(providers: providers, at: location, in: geometry)
             }
             .gesture(panGesture().simultaneously(with: zoomGesture()))
+           
         }
        
-       
+    }
+    @GestureState private var gestureZoomScaleEmoji: CGFloat = 1.0
+
+    private func scale(for emoji: EmojiArtModel.Emoji) -> CGFloat {
+        if selectedEmojis.contains(emoji){
+            return emoji.fontSize * self.zoomScale * self.gestureZoomScaleEmoji
+        } else {
+            return emoji.fontSize * self.zoomScale
+        }
     }
     
+    @GestureState private var gesturePanOffsetEmoji: CGSize = .zero
+    
+   
+        
+    private func panEmojiGesture(emoji: EmojiArtModel.Emoji) -> some Gesture {
+            DragGesture()
+                .onChanged { _ in
+                    singleEmoji = selectedEmojis.contains(emoji) ? nil : emoji
+                }
+                .updating($gesturePanOffsetEmoji) { value, state, _ in
+                    state = value.translation
+                }
+                .onEnded { value in
+                    withAnimation(.easeIn) {
+                        if selectedEmojis.contains(emoji) {
+                            for e in selectedEmojis {
+                                document.moveEmoji(e, by: value.translation / self.zoomScale)
+                            }
+                        } else {
+                            document.moveEmoji(emoji, by: value.translation / self.zoomScale)
+                            singleEmoji = nil
+                        }
+                    }
+                }
+        }
+
+
+    
+    // MARK: - Pan Single Emoji Gesture (Extra Credit)
+
+    @State private var singleEmoji: EmojiArtModel.Emoji?
+    
+    private var singleEmojiText: String {
+        return singleEmoji?.text ?? "nil"
+    }
+
+
+    
+    
+    
+    private func tapToSelect(emoji: EmojiArtModel.Emoji){
+        if selectedEmojis.contains(emoji){
+            selectedEmojis.remove(emoji)
+        } else {
+            selectedEmojis.insert(emoji)
+        }
+    }
+
+    
     // MARK: - Drag and Drop
-    private func drop(providers: [NSItemProvider], at location: CGPoint, in geometry: GeometryProxy)-> Bool{
+    
+    
+    
+    private func drop(providers: [NSItemProvider], at location: CGPoint, in geometry: GeometryProxy) -> Bool {
         var found = providers.loadObjects(ofType: URL.self) {url in
             document.setBackground(EmojiArtModel.Background.url(url))
         }
-        if !found{
+        if !found {
             found = providers.loadObjects(ofType: UIImage.self) {image in
-                if let data = image.jpegData(compressionQuality: 1.0){
+                if let data = image.jpegData(compressionQuality: 1.0) {
                     document.setBackground(.imageData(data))
                 }
             }
         }
-        if !found{
+        if !found {
             found = providers.loadObjects(ofType: String.self){ string in
-                if let emoji = string.first, emoji.isEmoji{
+                if let emoji = string.first, emoji.isEmoji {
                     document.addEmoji(
                         String(emoji),
                         at: convertToEmojiCoordinates(location, in: geometry),
@@ -70,9 +150,21 @@ struct EmojiArtDocumentView: View {
                 }
             }
         }
+        
         return found
     }
-        
+
+    
+    
+
+    
+
+
+
+
+
+
+    
     // MARK: - Positioning/Sizing Emoji
     private func position(for emoji: EmojiArtModel.Emoji, in geometry: GeometryProxy)-> CGPoint{
         convertFromEmojiCoordinates((emoji.x, emoji.y), in: geometry)
@@ -99,7 +191,11 @@ struct EmojiArtDocumentView: View {
     private func fontSize(for emoji: EmojiArtModel.Emoji) -> CGFloat{
         CGFloat(emoji.size)
     }
- 
+    
+    private func resizeFont(for emoji: EmojiArtModel.Emoji) -> CGFloat{
+        CGFloat(emoji.size)+3
+    }
+
     
     // MARK: - Panning
     @State private var steadyStatePanOffset: CGSize = CGSize.zero
@@ -118,6 +214,8 @@ struct EmojiArtDocumentView: View {
                 steadyStatePanOffset = steadyStatePanOffset + (finalDragGestureValue.translation / zoomScale)
             }
     }
+    
+
     
     
     // MARK: - Zooming
@@ -178,9 +276,6 @@ struct ScrollEmojisView: View{
     }
 }
                               
-
-
-
 struct EmojiArtDocumentView_Previews: PreviewProvider {
     static var previews: some View {
         EmojiArtDocumentView(document: EmojiArtDocument())
