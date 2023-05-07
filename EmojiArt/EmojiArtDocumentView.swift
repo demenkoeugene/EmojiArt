@@ -17,7 +17,7 @@ struct EmojiArtDocumentView: View {
     var body: some View {
         VStack(spacing: 0){
             documentBody
-            pallet
+            PaletteChooser(emojiFontSize: defaultEmojiFontSize)
         }
         .onTapGesture {
             selectedEmojis.removeAll()
@@ -35,7 +35,7 @@ struct EmojiArtDocumentView: View {
                 }
                 .gesture(doubleTapToZoom(in: geometry.size))
                 if document.backgroundImageFetchStatus == .fatching{
-                    ProgressView()
+                    ProgressView().scaleEffect(2)
                 }else{
                     ForEach(document.emojis){emoji in
                         ZStack {
@@ -61,10 +61,32 @@ struct EmojiArtDocumentView: View {
                     return drop(providers: providers, at: location, in: geometry)
             }
             .gesture(panGesture().simultaneously(with: zoomGesture()))
-           
+            .alert(item: $alertToShow){ alertToShow in
+                alertToShow.alert()
+            }
+            .onChange(of: document.backgroundImageFetchStatus){status in
+                switch status{
+                case .failed(let url):
+                    showBackgroundImageFetchFailedAlert(url)
+                default:
+                    break
+                }
+            }
         }
        
     }
+    
+    @State private var alertToShow: IdentifiableAlert?
+    private func showBackgroundImageFetchFailedAlert(_ url: URL){
+        alertToShow = IdentifiableAlert(id: "fetch failed: "+url.absoluteString, alert: {
+            Alert(
+                title: Text("Background Image Fetch"),
+                message: Text("Couldn't load image from \(url)"),
+                dismissButton: .default(Text("OK"))
+            )
+        })
+    }
+   
     @GestureState private var gestureZoomScaleEmoji: CGFloat = 1.0
 
     private func scale(for emoji: EmojiArtModel.Emoji) -> CGFloat {
@@ -252,29 +274,10 @@ struct EmojiArtDocumentView: View {
         steadyStateZoomScale * gestureZoomScale
     }
     
-    // MARK: - Palette
-    var pallet: some View{
-        ScrollEmojisView(emojis: testEmojis)
-            .font(.system(size: defaultEmojiFontSize))
-    }
-    
-    let testEmojis = "😄😀🥹😅😂🤣🥲☺️😊😌😜👽👾👣👁️👀👤🧠🚶‍♀️🐧🐔🐵🐸🐒🦊🐻"
-}
+   }
 
 
-struct ScrollEmojisView: View{
-    let emojis: String
-    
-    var body: some View {
-        ScrollView(.horizontal){
-            HStack{
-                ForEach(emojis.map { String($0) }, id: \.self) { emoji in
-                    Text(emoji).onDrag{NSItemProvider(object: emoji as NSString)}
-                }
-            }
-        }
-    }
-}
+
                               
 struct EmojiArtDocumentView_Previews: PreviewProvider {
     static var previews: some View {
