@@ -11,8 +11,9 @@ struct EmojiArtDocumentView: View {
     @ObservedObject var document: EmojiArtDocument
     @State private var selectedEmojis: Set<EmojiArtModel.Emoji> = []
     @State private var offsetValue = CGSize.zero
-   
+    @Environment(\.undoManager) var undoManager
     let defaultEmojiFontSize: CGFloat = 40
+    @State private var autozoom = false
     
     var body: some View {
         VStack(spacing: 0){
@@ -34,13 +35,13 @@ struct EmojiArtDocumentView: View {
                         .position(convertFromEmojiCoordinates((0,0), in: geometry))
                 }
                 .gesture(doubleTapToZoom(in: geometry.size))
-                if document.backgroundImageFetchStatus == .fatching{
+                if document.backgroundImageFetchStatus == .fetching {
                     ProgressView().scaleEffect(2)
                 }else{
                     ForEach(document.emojis){emoji in
                         ZStack {
                             Text(emoji.text)
-                                .font(.system(size: emoji.fontSize))
+                                .font(.system(size: fontSize(for: emoji)))
                                 .foregroundColor(selectedEmojis.contains(emoji) ? .white : .black)
                                 .scaleEffect(selectedEmojis.contains(emoji) ? 1.5 : 1.0)
                                 .opacity(selectedEmojis.contains(emoji) ? 0.5 : 1.0)
@@ -72,6 +73,9 @@ struct EmojiArtDocumentView: View {
                     break
                 }
             }
+            .onReceive(document.$backgroundImage){image in
+                zoomFit(image, in: geometry.size)
+            }
         }
        
     }
@@ -87,15 +91,15 @@ struct EmojiArtDocumentView: View {
         })
     }
    
-    @GestureState private var gestureZoomScaleEmoji: CGFloat = 1.0
-
-    private func scale(for emoji: EmojiArtModel.Emoji) -> CGFloat {
-        if selectedEmojis.contains(emoji){
-            return emoji.fontSize * self.zoomScale * self.gestureZoomScaleEmoji
-        } else {
-            return emoji.fontSize * self.zoomScale
-        }
-    }
+//    @GestureState private var gestureZoomScaleEmoji: CGFloat = 1.0
+//
+//    private func scale(for emoji: EmojiArtModel.Emoji) -> CGFloat {
+//        if selectedEmojis.contains(emoji){
+//            return emoji.fontSize * self.zoomScale * self.gestureZoomScaleEmoji
+//        } else {
+//            return emoji.fontSize * self.zoomScale
+//        }
+//    }
     
     @GestureState private var gesturePanOffsetEmoji: CGSize = .zero
     
@@ -111,14 +115,14 @@ struct EmojiArtDocumentView: View {
                 }
                 .onEnded { value in
                     withAnimation(.easeIn) {
-                        if selectedEmojis.contains(emoji) {
-                            for e in selectedEmojis {
-                                document.moveEmoji(e, by: value.translation / self.zoomScale)
-                            }
-                        } else {
-                            document.moveEmoji(emoji, by: value.translation / self.zoomScale)
-                            singleEmoji = nil
-                        }
+                           if selectedEmojis.contains(emoji) {
+                               for e in selectedEmojis {
+                                   document.moveEmoji(e, by: value.translation / self.zoomScale, undoManager: undoManager)
+                               }
+                           } else {
+                               document.moveEmoji(emoji, by: value.translation / self.zoomScale, undoManager: undoManager)
+                               singleEmoji = nil
+                           }
                     }
                 }
         }
@@ -151,31 +155,33 @@ struct EmojiArtDocumentView: View {
     
     
     private func drop(providers: [NSItemProvider], at location: CGPoint, in geometry: GeometryProxy) -> Bool {
-        var found = providers.loadObjects(ofType: URL.self) {url in
-            document.setBackground(EmojiArtModel.Background.url(url))
+        var found = providers.loadObjects(ofType: URL.self) { url in
+            autozoom = true
+            document.setBackground(.url(url.imageURL), undoManager: undoManager)
         }
         if !found {
-            found = providers.loadObjects(ofType: UIImage.self) {image in
+            found = providers.loadObjects(ofType: UIImage.self) { image in
                 if let data = image.jpegData(compressionQuality: 1.0) {
-                    document.setBackground(.imageData(data))
+                    autozoom = true
+                    document.setBackground(.imageData(data), undoManager: undoManager)
                 }
             }
         }
         if !found {
-            found = providers.loadObjects(ofType: String.self){ string in
+            found = providers.loadObjects(ofType: String.self) { string in
                 if let emoji = string.first, emoji.isEmoji {
                     document.addEmoji(
                         String(emoji),
                         at: convertToEmojiCoordinates(location, in: geometry),
-                        size: defaultEmojiFontSize / zoomScale
+                        size: defaultEmojiFontSize / zoomScale,
+                        // L14 pass undo manager to Intent functions
+                        undoManager: undoManager
                     )
                 }
             }
         }
-        
         return found
     }
-
     
     
 
@@ -220,7 +226,8 @@ struct EmojiArtDocumentView: View {
 
     
     // MARK: - Panning
-    @State private var steadyStatePanOffset: CGSize = CGSize.zero
+    @SceneStorage("EmojiArtDocumentView.steadyStatePanOffset")
+    private var steadyStatePanOffset: CGSize = CGSize.zero
     @GestureState private var gesturePanOffset: CGSize = CGSize.zero
     
     private var panOffset: CGSize {
@@ -241,7 +248,8 @@ struct EmojiArtDocumentView: View {
     
     
     // MARK: - Zooming
-    @State private var steadyStateZoomScale: CGFloat = 1
+    @SceneStorage("EmojiArtDocumentView.steadyStateZoomScale")
+    private var steadyStateZoomScale: CGFloat = 1
     @GestureState private var  gestureZoomScale: CGFloat = 1
      
     private func zoomGesture()->some Gesture{
