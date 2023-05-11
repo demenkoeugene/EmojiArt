@@ -21,6 +21,7 @@
 		F65CA1702A0422140072DDB5 /* PaletteManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F65CA16F2A0422140072DDB5 /* PaletteManager.swift */; };
 		F69103442A0CE19800952FE0 /* UtilityViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69103432A0CE19800952FE0 /* UtilityViews.swift */; };
 		F69103462A0CE1BF00952FE0 /* UtilityExtensions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69103452A0CE1BF00952FE0 /* UtilityExtensions.swift */; };
+		F691034A2A0D185000952FE0 /* Camera.swift in Sources */ = {isa = PBXBuildFile; fileRef = F69103492A0D185000952FE0 /* Camera.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		F65CA16F2A0422140072DDB5 /* PaletteManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteManager.swift; sourceTree = "<group>"; };
 		F69103432A0CE19800952FE0 /* UtilityViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilityViews.swift; sourceTree = "<group>"; };
 		F69103452A0CE1BF00952FE0 /* UtilityExtensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UtilityExtensions.swift; sourceTree = "<group>"; };
+		F69103492A0D185000952FE0 /* Camera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Camera.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -78,6 +80,7 @@
 				F62DAE8229D5BC7E00783C9D /* EmojiArtApp.swift */,
 				F65CA16F2A0422140072DDB5 /* PaletteManager.swift */,
 				F62DAE9A29D5C38B00783C9D /* EmojiArtDocumentView.swift */,
+				F69103492A0D185000952FE0 /* Camera.swift */,
 				F62DAE9029D5BCAE00783C9D /* EmojiiArtModel.swift */,
 				F69103432A0CE19800952FE0 /* UtilityViews.swift */,
 				F69103452A0CE1BF00952FE0 /* UtilityExtensions.swift */,
@@ -186,6 +189,7 @@
 				F62DAE9529D5BFF900783C9D /* EmojiArtDocument.swift in Sources */,
 				F62DAE8329D5BC7E00783C9D /* EmojiArtApp.swift in Sources */,
 				F69103462A0CE1BF00952FE0 /* UtilityExtensions.swift in Sources */,
+				F691034A2A0D185000952FE0 /* Camera.swift in Sources */,
 				F69103442A0CE19800952FE0 /* UtilityViews.swift in Sources */,
 				F62DAE9329D5BF0A00783C9D /* EmojiArtModel.Background.swift in Sources */,
 				F6087C892A02623F00AE91C5 /* PaletteChooser.swift in Sources */,

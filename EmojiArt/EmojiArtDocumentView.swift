@@ -29,11 +29,11 @@ struct EmojiArtDocumentView: View {
     var documentBody: some View{
         GeometryReader {geometry in
             ZStack{
-                Color.white.overlay{
-                    OptionalImage(uiImage: document.backgroundImage)
+                Color.white
+                OptionalImage(uiImage: document.backgroundImage)
                         .scaleEffect(zoomScale)
                         .position(convertFromEmojiCoordinates((0,0), in: geometry))
-                }
+                
                 .gesture(doubleTapToZoom(in: geometry.size))
                 if document.backgroundImageFetchStatus == .fetching {
                     ProgressView().scaleEffect(2)
@@ -76,10 +76,68 @@ struct EmojiArtDocumentView: View {
             .onReceive(document.$backgroundImage){image in
                 zoomFit(image, in: geometry.size)
             }
+            .compactableToolbar{
+                    AnimatedActionButton(title: "Paste Background", systemImage: "doc.on.clipboard"){
+                        pasteBackground()
+                    }
+                    if Camera.isAvailable {
+                        AnimatedActionButton(title: "Take Photo", systemImage: "camera") {
+                            backgroundPicker = .camera
+                        }
+                    }
+                    if let undoManager = undoManager{
+                            if undoManager.canUndo{
+                                AnimatedActionButton(title: undoManager.undoActionName, systemImage: "arrow.uturn.backward"){
+                                    undoManager.undo()
+                                }
+                            }
+                        if undoManager.canRedo{
+                            AnimatedActionButton(title: undoManager.redoActionName,
+                                                 systemImage: "arrow.uturn.forward"){
+                                undoManager.redo()
+                            }
+                        }
+                    }
+                    
+                }
+            .sheet(item: $backgroundPicker) { pickerType in
+                switch pickerType {
+                case .camera: Camera(handlePickedImage: { image in handlePickedBackgroundImage(image) })
+                case .library: EmptyView()
+                }
+            }
         }
        
     }
     
+    // L15 @State which controls whether the camera or photo-library sheet (or neither) is up
+    @State private var backgroundPicker: BackgroundPickerType?
+    
+    // L15 enum to control which photo-picking sheet to show
+    enum BackgroundPickerType: Identifiable {
+        case camera
+        case library
+        var id: BackgroundPickerType { self }
+    }
+    
+    // L15 handler for an image from camera or photo library
+    private func handlePickedBackgroundImage(_ image: UIImage?) {
+        autozoom = true
+        if let imageData = image?.jpegData(compressionQuality: 1.0) {
+            document.setBackground(.imageData(imageData), undoManager: undoManager)
+        }
+        backgroundPicker = nil
+    }
+    
+    
+    private func pasteBackground() {
+        autozoom = true
+        if let imageData = UIPasteboard.general.image?.jpegData(compressionQuality: 1.0) { // L16 made cross-platform
+            document.setBackground(.imageData(imageData), undoManager: undoManager)
+        } else if let url = UIPasteboard.general.url?.imageURL { // L16 made cross-platform
+            document.setBackground(.url(url), undoManager: undoManager)
+        }
+    }
     @State private var alertToShow: IdentifiableAlert?
     private func showBackgroundImageFetchFailedAlert(_ url: URL){
         alertToShow = IdentifiableAlert(id: "fetch failed: "+url.absoluteString, alert: {
